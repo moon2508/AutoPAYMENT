@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "crypto": "^1.0.1",
     "cypress": "^13.6.2",
     "fast-xml-parser": "^4.3.2",
     "xml2js": "^0.6.2"
