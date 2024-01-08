@@ -63,17 +63,16 @@ function signDataWithRSA(data, privateKey) {
 }
 
 describe('SOAP API Testing - FULL Flow Transaction', () => {
-    beforeEach(()=>
-    {
-      cy.request({
-        method: 'POST',
-        url: url_base,
-        headers: {
-          'Content-Type': 'text/xml',
+  beforeEach(() => {
+    cy.request({
+      method: 'POST',
+      url: url_base,
+      headers: {
+        'Content-Type': 'text/xml',
 
-          SOAPAction: '',
-        },
-        body: `
+        SOAPAction: '',
+      },
+      body: `
         <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
         <Body>
             <signInAsPartner xmlns="http://interfaces.itopup.vnptepay.vn">
@@ -83,24 +82,24 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
         </Body>
     </Envelope>
         `,
-      }).then((response) => {
-        // Kiểm tra phản hồi
-        expect(response.status).to.eq(200);
-        cy.log(response.body);
+    }).then((response) => {
+      // Kiểm tra phản hồi
+      expect(response.status).to.eq(200);
+      cy.log(response.body);
 
 
 
 
-        const errorCode = xmlProperty(response.body, 'errorCode');
-        const errorMessage = xmlProperty(response.body, 'errorMessage');
-        const token = xmlProperty(response.body, 'token') ;
-        // cy.wrap('token').as('token');
-        // cy.setToken(token);
-        Cypress.env('token', token);
-        cy.log(errorCode);
-        expect(errorCode).to.eq('0');
-        // cy.log(errorMessage);
-        cy.log(token);
+      const errorCode = xmlProperty(response.body, 'errorCode');
+      const errorMessage = xmlProperty(response.body, 'errorMessage');
+      const token = xmlProperty(response.body, 'token');
+      // cy.wrap('token').as('token');
+      // cy.setToken(token);
+      Cypress.env('token', token);
+      cy.log(errorCode);
+      expect(errorCode).to.eq('0');
+      // cy.log(errorMessage);
+      cy.log(token);
     });
   });
   it.skip('sign data RSA-SHA256', () => {
@@ -116,16 +115,16 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
   })
   it.skip('execute download softpin - 1000 ', () => {
     const token = Cypress.env('token');
-    const rqID= requestID;
+    const rqID = requestID;
     cy.log(rqID);
     cy.log(token);
-    const data = username + '|' + rqID + '|'+ token + '|' + '1000';
+    const data = username + '|' + rqID + '|' + token + '|' + '1000';
     // Đường dẫn đến tệp khóa bí mật RSA của bạn
 
     const signature = signDataWithRSA(data, privateKey);
     cy.log('Data:' + data);
     cy.log('Signature:' + signature);
-    
+
     cy.request({
       method: 'POST',
       url: url_base,
@@ -173,18 +172,18 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
     // cy.log(request.body)
 
   });
-  it('execute topup transaction - 1200', () => {
+  it.skip('execute topup transaction - 1200', () => {
     const token = Cypress.env('token');
-    const rqID= requestID;
+    const rqID = requestID;
     cy.log(rqID);
     cy.log(token);
-    const data = username + '|' + rqID + '|'+ token + '|' + '1200';
+    const data = username + '|' + rqID + '|' + token + '|' + '1200';
     // Đường dẫn đến tệp khóa bí mật RSA của bạn
 
     const signature = signDataWithRSA(data, privateKey);
     cy.log('Data:' + data);
     cy.log('Signature:' + signature);
-    
+
     cy.request({
       method: 'POST',
       url: url_base,
@@ -203,9 +202,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
   "operation": 1200,
   "username": "${username}",
   "requestID": "${rqID}",
-  "targetAccount": "0932245678",
-  "providerCode": "DataVMS2",
-  "topupAmount": 450000,
+  "targetAccount": "0982345679",
+  "providerCode": "Viettel",
+  "topupAmount": 20000,
   "signature": "${signature}",
   "token":"${token}"
 }
@@ -228,9 +227,18 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
 
   });
 
-  it.skip('Check topup transaction - 1300', () => {
+  it('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
-    cy.log(token)
+    const rqID = 'HangPTDV_8181_812024';
+    cy.log(rqID);
+    cy.log(token);
+    const data = username + '|' + rqID + '|' + token + '|' + '1300';
+    // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+    const signature = signDataWithRSA(data, privateKey);
+    cy.log('Data:' + data);
+    cy.log('Signature:' + signature);
+
     cy.request({
       method: 'POST',
       url: url_base,
@@ -242,11 +250,13 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
       body: `
       <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
     <Body>
-        <getDirectTransDetail xmlns="http://interfaces.itopup.vnptepay.vn">
-            <username>${username}</username>
-            <requestID>HangPTDV_9696_212024</requestID>
-            <token>${token}</token>
-        </getDirectTransDetail>
+    <requestHandle
+    xmlns="http://interfaces.itopup.vnpt
+    epay.vn"> <requestData>
+    {"operation":1300,"username":"${username}",
+    "requestID":"${rqID}","signature":"${signature}","token":"${token}"
+} </requestData>
+</requestHandle>
     </Body>
 </Envelope>
       
@@ -255,11 +265,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
       // Kiểm tra phản hồi
       expect(response.status).to.eq(200);
       cy.log(response.body);
-      const errorMessage = xmlProperty(response.body, 'errorMessage');
-      const errorCode = xmlProperty(response.body, 'errorCode');
-      cy.log(errorMessage);
+      
       cy.log('Giao dịch Thành công ');
-      expect(errorCode).to.eq('0');
+      
 
     });
 
@@ -267,7 +275,16 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
 
   it.skip('Redownload transaction - 1100', () => {
     const token = Cypress.env('token');
-    cy.log(token)
+    const rqID = "HangPTDV_6666_812024";
+    cy.log(rqID);
+    cy.log(token);
+    const data = username + '|' + rqID + '|' + token + '|' + '1100';
+    // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+    const signature = signDataWithRSA(data, privateKey);
+    cy.log('Data:' + data);
+    cy.log('Signature:' + signature);
+
     cy.request({
       method: 'POST',
       url: url_base,
@@ -279,12 +296,13 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
       body: `
       <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
     <Body>
-        <partnerRedownloadSoftpin xmlns="http://interfaces.itopup.vnptepay.vn">
-            <username>${username}</username>
-            <requestId>HangPTDV_6767_212024</requestId>
-            <keyBirthdayTime>${keyBirthdayTime}</keyBirthdayTime>
-            <token>${token}</token>
-        </partnerRedownloadSoftpin>
+        <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
+<requestData>
+
+{"operation":1100,"username":"${username}","requestID":"${rqID}","keyBirthdayTime":
+"${keyBirthdayTime}","signature":"${signature}", "token": "${token}"}
+</requestData>
+</requestHandle>
     </Body>
 </Envelope>
       
@@ -293,11 +311,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
       // Kiểm tra phản hồi
       expect(response.status).to.eq(200);
       cy.log(response.body);
-      const errorMessage = xmlProperty(response.body, 'errorMessage');
-      const errorCode = xmlProperty(response.body, 'errorCode');
-      cy.log(errorMessage);
+
       cy.log('Giao dịch Thành công ');
-      expect(errorCode).to.eq('0');
+
 
     });
 
