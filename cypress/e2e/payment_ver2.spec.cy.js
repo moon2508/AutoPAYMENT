@@ -102,7 +102,7 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
       cy.log(token);
     });
   });
-  it.skip('sign data RSA-SHA256', () => {
+  it('sign data RSA-SHA256', () => {
 
 
     // Sử dụng hàm ký trong mã chương trình của bạn
@@ -172,7 +172,7 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
     // cy.log(request.body)
 
   });
-  it.skip('execute topup transaction - 1200', () => {
+  it('execute topup transaction - 1200', () => {
     const token = Cypress.env('token');
     const rqID = requestID;
     cy.log(rqID);
@@ -202,9 +202,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
   "operation": 1200,
   "username": "${username}",
   "requestID": "${rqID}",
-  "targetAccount": "0982345679",
-  "providerCode": "Viettel",
-  "topupAmount": 20000,
+  "targetAccount": "0902345678",
+  "providerCode": "DataVMS",
+  "topupAmount": 50000,
   "signature": "${signature}",
   "token":"${token}"
 }
@@ -227,7 +227,7 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
 
   });
 
-  it('Check topup transaction - 1300', () => {
+  it.skip('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
     const rqID = 'HangPTDV_8181_812024';
     cy.log(rqID);
