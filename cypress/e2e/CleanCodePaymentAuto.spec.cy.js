@@ -51,9 +51,19 @@ v46DLRXUuAGHl0jDssSPJabDeMufgsqlGa8Vyy4+4X1ZIhqM+cD1k6uBjiodlUAE
 DXCntABHCGckX5298IljOQTUq5UpnsAm98n9+LkwTPU+aQ2OUT/fT/jluXVlNSoz
 c5DZy1yl2g4BJPashtqNjnCW
 -----END PRIVATE KEY-----`;
+const public_key = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAslVlUfkz+0xiFZOvVd/6
+FRiV+WR3Twn2W0Oi9hKHsfuoiYPjOu8t6DKWB88VIjfVSjDiL59LJ/Podums7fZR
+0EQ+ByYp0gQqqEbPRv/ZSy3AxrW3V7S3A3z0+vuZ7SG/gijUV0B1oq0jN9MlV6m8
+C3+UFoMzh+l+AgtkeZDNjHAEXiHkYcRjfNI+dL05kWUPVPc2PBDJ/TitvwzZ2dv2
+dLlx7KAFbZnMeO7vflxZNmXvcRNXSkj/6KEbVrQCsJuUO7+OijgbQ813Nujqm5JH
+lsAi0bV8u5muklYCgE/QOBio6uv6+hiCnnq9HcJZsWd1auS0iwAQTA/G2TeKca8o
+vwIDAQAB
+-----END PUBLIC KEY-----`;
 
 const crypto = require('crypto');
 const fs = require('fs');
+const forge = require('node-forge');
 
 function signDataWithRSA(data, privateKey) {
   // const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
@@ -63,6 +73,22 @@ function signDataWithRSA(data, privateKey) {
   return signature;
 }
 
+function verifySignDataWithPublicKey(data, hexSignature, publicKey){
+// Convert hex signature to binary
+const signature = forge.util.hexToBytes(hexSignature);
+
+// Load public key
+const publicKeyObj = forge.pki.publicKeyFromPem(publicKey);
+
+// Verify signature
+const md = forge.md.sha256.create();
+md.update(data, 'utf8');
+const verificationResult = publicKeyObj.verify(md.digest().bytes(), signature); 
+if(expect(verificationResult).to.eq(true)){
+  cy.log('Verify thành công')
+};
+
+}
 function login(username, password){
   cy.request({
     method: 'POST',
@@ -143,14 +169,27 @@ function download(username, signature, rqID, keyBirthdayTime, token, productId,q
     
     const jsonData = JSON.parse(data_response);
     const softpinPinCode = jsonData.products[0].softpins[0].softpinPinCode;
-    cy.log('Softpin Pin Code:'+  softpinPinCode);
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
 
-    cy.log('Giao dịch ' + requestID + ' Thành công ');
-    // expect(errorMessage).to.eq('success');
-    
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+
+
+    cy.log("Chữ ký IME trả về: "+ signature_res);
+    cy.log("Dữ liệu verify: "+ data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
+
+
+    //thực hiện giải mã chuỗi mã thẻ
+    cy.log('Softpin Pin Code:'+  softpinPinCode);  
     
     const decryptedString = decrypt(softpinPinCode, softPinKey);
     cy.log("Decrypted Softpin Pin Code:" +  decryptedString);
+
+    cy.log('Giao dịch ' + requestID + ' Thành công ');
+    // expect(errorMessage).to.eq('success')
 
   });
 }
@@ -188,11 +227,26 @@ function topup(username,signature,rqID,token,phone, providerCode, amount){
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
     cy.log(response.body);
-    const errorMessage = xmlProperty(response.body, 'errorMessage');
-    const errorCode = xmlProperty(response.body, 'errorCode');
-    cy.log(errorMessage);
-    cy.log('Giao dịch ' + requestID + ' Thành công ');
-    // expect(errorMessage).to.eq('success');
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+    
+    // cy.log(data_response);
+    
+    const jsonData = JSON.parse(data_response);
+    
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
+    const reqID_res = jsonData.requestID;
+
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+
+
+    cy.log("Chữ ký IME trả về: "+ signature_res);
+    cy.log("Dữ liệu verify: "+ data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
+    cy.log('Giao dịch:'+ reqID_res + " thành công")
+
 
   });
 }
@@ -208,16 +262,16 @@ function checktopup(username, rqID, signature,token){
     },
     body: `
     <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
-  <Body>
-  <requestHandle
-  xmlns="http://interfaces.itopup.vnpt
-  epay.vn"> <requestData>
-  {"operation":1300,"username":"${username}",
-  "requestID":"${rqID}","signature":"${signature}","token":"${token}"
-} </requestData>
-</requestHandle>
-  </Body>
+    <Body>
+        <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
+            <requestData>{"operation":1300,"username":"${username}",
+            "requestID":"${rqID}","signature":"${signature}","token":"${token}"
+          }
+          </requestData>
+        </requestHandle>
+    </Body>
 </Envelope>
+ 
     
     `,
   }).then((response) => {
@@ -225,7 +279,23 @@ function checktopup(username, rqID, signature,token){
     expect(response.status).to.eq(200);
     cy.log(response.body);
     
-    cy.log('Giao dịch Thành công ');
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+    
+    cy.log(data_response);
+    
+    const jsonData = JSON.parse(data_response);
+    
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
+
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+
+
+    cy.log("Chữ ký IME trả về: "+ signature_res);
+    cy.log("Dữ liệu verify: "+ data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
     
 
   });
@@ -259,7 +329,23 @@ function redownload(username,rqID, signature,token){
     expect(response.status).to.eq(200);
     cy.log(response.body);
 
-    cy.log('Giao dịch Thành công ');
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+    
+    // cy.log(data_response);
+    
+    const jsonData = JSON.parse(data_response);
+    
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
+
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+
+
+    cy.log("Chữ ký IME trả về: "+ signature_res);
+    cy.log("Dữ liệu verify: "+ data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
 
 
   });
@@ -301,7 +387,7 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
     const decryptedString = decrypt(encryptedString, key);
     cy.log("Decrypted String:", decryptedString);
   })
-  it('execute download softpin - 1000 ', () => {
+  it.skip('execute download softpin - 1000 ', () => {
     const productId = 1;
     const quantity = 1;
     const token = Cypress.env('token');
@@ -337,7 +423,7 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
 
   });
 
-  it.skip('Check topup transaction - 1300', () => {
+  it('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
     const rqID = 'HangPTDV_1313_2912024';
     cy.log(rqID);
