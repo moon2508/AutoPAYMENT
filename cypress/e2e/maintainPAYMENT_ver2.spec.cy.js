@@ -1,18 +1,30 @@
-function getRandomInt(min, max) {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
 
-const randomNum = getRandomInt(1, 100);
-// get date
+const crypto = require('crypto');
+const fs = require('fs');
+const forge = require('node-forge');
+
+function getrequestId(text){
+ const min = Math.ceil(1);
+ const max = Math.floor(1000);
+ const randomNumbers=  Math.floor(Math.random() * (max - min + 1) + min);
+ // get date
 const currentDate = new Date();
 const year = currentDate.getFullYear();
 const month = currentDate.getMonth() + 1; // Month is zero-based, so add 1
 const day = currentDate.getDate();
+const hour = currentDate.getHours();
+const minute = currentDate.getMinutes();
+const second = currentDate.getSeconds();
 
 // Format the date as per your requirements
-const formattedDate = `${day}${month}${year}`;
+const formattedDate = `${day}${month}${year}${hour}${minute}${second}${randomNumbers}`;
+
+const requestID = text + formattedDate;
+return requestID;
+
+}
+
+
 
 function xmlProperty(xml, property) {
   return Cypress.$(Cypress.$.parseXML(xml)).find(property).text();
@@ -22,7 +34,12 @@ const username = "IMEDIA_TEST";
 const password = "24112536637251";
 const keyBirthdayTime = '2022/11/29 09:26:01.690';
 const softPinKey = "70cf4fe7b75b72ddd78cbdb6";
-const requestID = 'HangPTDV_' + randomNum + randomNum + '_' + formattedDate;
+const productId = 1;
+    const quantity = 1;
+    const providerCode = 'DataVMS';
+    const phone = '0902345678';
+    const amount = 50000;
+
 const privateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCyVWVR+TP7TGIV
 k69V3/oVGJX5ZHdPCfZbQ6L2Eoex+6iJg+M67y3oMpYHzxUiN9VKMOIvn0sn8+h2
@@ -61,9 +78,7 @@ lsAi0bV8u5muklYCgE/QOBio6uv6+hiCnnq9HcJZsWd1auS0iwAQTA/G2TeKca8o
 vwIDAQAB
 -----END PUBLIC KEY-----`;
 
-const crypto = require('crypto');
-const fs = require('fs');
-const forge = require('node-forge');
+
 
 function signDataWithRSA(data, privateKey) {
   // const privateKey = fs.readFileSync(privateKeyPath, 'utf8');
@@ -89,6 +104,9 @@ if(expect(verificationResult).to.eq(true)){
 };
 
 }
+
+
+
 function login(username, password){
   cy.request({
     method: 'POST',
@@ -111,7 +129,7 @@ function login(username, password){
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log(response.body);
+    cy.log("Response body: " + response.body);
     const errorCode = xmlProperty(response.body, 'errorCode');
       const errorMessage = xmlProperty(response.body, 'errorMessage');
       const token = xmlProperty(response.body, 'token');
@@ -121,11 +139,19 @@ function login(username, password){
       cy.log(errorCode);
       expect(errorCode).to.eq('0');
       // cy.log(errorMessage);
-      cy.log(token);
+      cy.log("Token : " + token);
   })
 }
 
-function download(username, signature, rqID, keyBirthdayTime, token, productId,quantity){
+function download(username, privateKey, keyBirthdayTime, token, productId,quantity){
+  const rqID = getrequestId("HangPTDV_Download_");
+  Cypress.env('request_download', rqID);
+  const data = username + '|' + rqID + '|' + token + '|' + '1000';
+  // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+  const signature = signDataWithRSA(data, privateKey);
+  cy.log('Data DOWNLOAD:' + data);
+  cy.log('Signature DOWNLOAD:' + signature);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -162,7 +188,7 @@ function download(username, signature, rqID, keyBirthdayTime, token, productId,q
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log(response.body);
+    cy.log("Response DOWNLOAD: " + response.body);
     const data_response = xmlProperty(response.body, 'requestHandleReturn');
     
     // cy.log(data_response);
@@ -188,12 +214,20 @@ function download(username, signature, rqID, keyBirthdayTime, token, productId,q
     const decryptedString = decrypt(softpinPinCode, softPinKey);
     cy.log("Decrypted Softpin Pin Code:" +  decryptedString);
 
-    cy.log('Giao dịch ' + requestID + ' Thành công ');
+    cy.log('Giao dịch ' + rqID + ' DOWNLOAD Thành công ');
     // expect(errorMessage).to.eq('success')
 
   });
 }
-function topup(username,signature,rqID,token,phone, providerCode, amount){
+function topup(username,privateKey,token,phone, providerCode, amount){
+  const rqID = getrequestId("HangPTDV_TOPUP_");
+  const data = username + '|' + rqID + '|' + token + '|' + '1200';
+    // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+    const signature = signDataWithRSA(data, privateKey);
+    cy.log('Data TOPUP :' + data);
+    cy.log('Signature TOPUP:' + signature);
+  Cypress.env('request_topup', rqID);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -226,7 +260,7 @@ function topup(username,signature,rqID,token,phone, providerCode, amount){
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log(response.body);
+    cy.log(" Response TOPUP: " + response.body);
     const data_response = xmlProperty(response.body, 'requestHandleReturn');
     
     // cy.log(data_response);
@@ -245,13 +279,20 @@ function topup(username,signature,rqID,token,phone, providerCode, amount){
     cy.log("Dữ liệu verify: "+ data_verify);
     // thực hiện verify dữ liệu trả về
     verifySignDataWithPublicKey(data_verify, signature_res, public_key);
-    cy.log('Giao dịch:'+ reqID_res + " thành công")
+    cy.log('Giao dịch:'+ reqID_res + " TOPUP thành công")
 
 
   });
 }
 
-function checktopup(username, rqID, signature,token){
+function checktopup(username, privateKey,token){
+  const rqID = Cypress.env("request_topup");
+  const data = username + '|' + rqID + '|' + token + '|' + '1300';
+    // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+    const signature = signDataWithRSA(data, privateKey);
+    cy.log('Data checktopup:' + data);
+    cy.log('Signature checktopup:' + signature);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -277,7 +318,7 @@ function checktopup(username, rqID, signature,token){
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log(response.body);
+    cy.log("Response CHECKTOPUP: " + response.body);
     
     const data_response = xmlProperty(response.body, 'requestHandleReturn');
     
@@ -301,7 +342,14 @@ function checktopup(username, rqID, signature,token){
   });
 }
 
-function redownload(username,rqID, signature,token){
+function redownload(username, privateKey,token){
+  const rqID = Cypress.env('request_download');
+  const data = username + '|' + rqID + '|' + token + '|' + '1100';
+  // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+  const signature = signDataWithRSA(data, privateKey);
+  cy.log('Data Redownload:' + data);
+  cy.log('Signature Redownload:' + signature);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -327,7 +375,7 @@ function redownload(username,rqID, signature,token){
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log(response.body);
+    cy.log("Response Redownload: "+ response.body);
 
     const data_response = xmlProperty(response.body, 'requestHandleReturn');
     
@@ -387,70 +435,33 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
     const decryptedString = decrypt(encryptedString, key);
     cy.log("Decrypted String:", decryptedString);
   })
-  it.skip('execute download softpin - 1000 ', () => {
-    const productId = 1;
-    const quantity = 1;
+  it('execute download softpin - 1000 ', () => {
+    
     const token = Cypress.env('token');
-    const rqID = requestID;
-    cy.log(rqID);
-    cy.log(token);
-    const data = username + '|' + rqID + '|' + token + '|' + '1000';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data:' + data);
-    cy.log('Signature:' + signature);
-    download(username, signature, rqID, keyBirthdayTime, token, productId, quantity);
     
-
+    download(username, privateKey, keyBirthdayTime, token, productId,quantity);
+    
   });
-  it.skip('execute topup transaction - 1200', () => {
-    const providerCode = 'DataVMS';
-    const phone = '0902345678';
-    const amount = 50000;
+  it('execute topup transaction - 1200', () => { 
     const token = Cypress.env('token'); //lấy ra token
-    const rqID = requestID;
-    cy.log(rqID);
-    cy.log(token);
-    const data = username + '|' + rqID + '|' + token + '|' + '1200';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
 
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data:' + data);
-    cy.log('Signature:' + signature);
-    topup(username,signature,rqID,token,phone, providerCode, amount);
-    
+    topup(username,privateKey,token,phone, providerCode, amount);
 
   });
 
   it('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
-    const rqID = 'HangPTDV_1313_2912024';
-    cy.log(rqID);
-    cy.log(token);
-    const data = username + '|' + rqID + '|' + token + '|' + '1300';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data:' + data);
-    cy.log('Signature:' + signature);
-    checktopup(username, rqID, signature,token);
+    topup(username,privateKey,token,phone, providerCode, amount);
+    checktopup(username, privateKey,token);
    
 
   });
 
-  it.skip('Redownload transaction - 1100', () => {
+  it('Redownload transaction - 1100', () => {
     const token = Cypress.env('token');
-    const rqID = "HangPTDV_6666_812024";
-    cy.log(rqID);
-    cy.log(token);
-    const data = username + '|' + rqID + '|' + token + '|' + '1100';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data:' + data);
-    cy.log('Signature:' + signature);
-    redownload(username,rqID, signature,token);
+   
+    download(username, privateKey, keyBirthdayTime, token, productId,quantity);
+    redownload(username, privateKey,token);
     
   });
 

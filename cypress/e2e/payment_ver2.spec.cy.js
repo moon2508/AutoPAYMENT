@@ -202,9 +202,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
   "operation": 1200,
   "username": "${username}",
   "requestID": "${rqID}",
-  "targetAccount": "0902345678",
-  "providerCode": "DataVMS",
-  "topupAmount": 50000,
+  "targetAccount": "0982345678",
+  "providerCode": "Viettel",
+  "topupAmount": 20000,
   "signature": "${signature}",
   "token":"${token}"
 }
@@ -227,9 +227,9 @@ describe('SOAP API Testing - FULL Flow Transaction', () => {
 
   });
 
-  it.skip('Check topup transaction - 1300', () => {
+  it('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
-    const rqID = 'HangPTDV_8181_812024';
+    const rqID = 'tmt_api_5583321710406369';
     cy.log(rqID);
     cy.log(token);
     const data = username + '|' + rqID + '|' + token + '|' + '1300';
