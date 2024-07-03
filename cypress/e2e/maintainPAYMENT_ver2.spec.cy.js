@@ -3,24 +3,24 @@ const crypto = require('crypto');
 const fs = require('fs');
 const forge = require('node-forge');
 
-function getrequestId(text){
- const min = Math.ceil(1);
- const max = Math.floor(1000);
- const randomNumbers=  Math.floor(Math.random() * (max - min + 1) + min);
- // get date
-const currentDate = new Date();
-const year = currentDate.getFullYear();
-const month = currentDate.getMonth() + 1; // Month is zero-based, so add 1
-const day = currentDate.getDate();
-const hour = currentDate.getHours();
-const minute = currentDate.getMinutes();
-const second = currentDate.getSeconds();
+function getrequestId(text) {
+  const min = Math.ceil(1);
+  const max = Math.floor(1000);
+  const randomNumbers = Math.floor(Math.random() * (max - min + 1) + min);
+  // get date
+  const currentDate = new Date();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1; // Month is zero-based, so add 1
+  const day = currentDate.getDate();
+  const hour = currentDate.getHours();
+  const minute = currentDate.getMinutes();
+  const second = currentDate.getSeconds();
 
-// Format the date as per your requirements
-const formattedDate = `${day}${month}${year}${hour}${minute}${second}${randomNumbers}`;
+  // Format the date as per your requirements
+  const formattedDate = `${day}${month}${year}${hour}${minute}${second}${randomNumbers}`;
 
-const requestID = text + formattedDate;
-return requestID;
+  const requestID = text + formattedDate;
+  return requestID;
 
 }
 
@@ -34,11 +34,11 @@ const username = "IMEDIA_TEST";
 const password = "24112536637251";
 const keyBirthdayTime = '2022/11/29 09:26:01.690';
 const softPinKey = "70cf4fe7b75b72ddd78cbdb6";
-const productId = 1;
-    const quantity = 1;
-    const providerCode = 'DataVMS';
-    const phone = '0902345678';
-    const amount = 50000;
+const productId = 8;
+const quantity = 1;
+const providerCode = 'Viettel';
+const phone = '0982345678';
+const amount = 20000;
 
 const privateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCyVWVR+TP7TGIV
@@ -68,6 +68,7 @@ v46DLRXUuAGHl0jDssSPJabDeMufgsqlGa8Vyy4+4X1ZIhqM+cD1k6uBjiodlUAE
 DXCntABHCGckX5298IljOQTUq5UpnsAm98n9+LkwTPU+aQ2OUT/fT/jluXVlNSoz
 c5DZy1yl2g4BJPashtqNjnCW
 -----END PRIVATE KEY-----`;
+
 const public_key = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAslVlUfkz+0xiFZOvVd/6
 FRiV+WR3Twn2W0Oi9hKHsfuoiYPjOu8t6DKWB88VIjfVSjDiL59LJ/Podums7fZR
@@ -88,26 +89,36 @@ function signDataWithRSA(data, privateKey) {
   return signature;
 }
 
-function verifySignDataWithPublicKey(data, hexSignature, publicKey){
-// Convert hex signature to binary
-const signature = forge.util.hexToBytes(hexSignature);
+function verifySignDataWithPublicKey(data, hexSignature, publicKey) {
+  // Convert hex signature to binary
+  const signature = forge.util.hexToBytes(hexSignature);
 
-// Load public key
-const publicKeyObj = forge.pki.publicKeyFromPem(publicKey);
+  // Load public key
+  const publicKeyObj = forge.pki.publicKeyFromPem(publicKey);
 
-// Verify signature
-const md = forge.md.sha256.create();
-md.update(data, 'utf8');
-const verificationResult = publicKeyObj.verify(md.digest().bytes(), signature); 
-if(expect(verificationResult).to.eq(true)){
-  cy.log('Verify thành công')
-};
+  // Verify signature
+  const md = forge.md.sha256.create();
+  md.update(data, 'utf8');
+  const verificationResult = publicKeyObj.verify(md.digest().bytes(), signature);
+  if (expect(verificationResult).to.eq(true)) {
+    cy.log('Verify thành công')
+  };
 
 }
 
+function login(username, password) {
+  const requestXml = `
+<Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
+  <Body>
+      <signInAsPartner xmlns="http://interfaces.itopup.vnptepay.vn">
+          <username>${username}</username>
+          <password>${password}</password>
+      </signInAsPartner>
+  </Body>
+</Envelope>
+`;
 
-
-function login(username, password){
+  cy.log(`Request Đầu vào: ${requestXml}`);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -116,34 +127,23 @@ function login(username, password){
 
       SOAPAction: '',
     },
-    body: `
-      <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
-      <Body>
-          <signInAsPartner xmlns="http://interfaces.itopup.vnptepay.vn">
-              <username>${username}</username>
-              <password>${password}</password>
-          </signInAsPartner>
-      </Body>
-  </Envelope>
-      `,
+    body: requestXml,
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
     cy.log("Response body: " + response.body);
     const errorCode = xmlProperty(response.body, 'errorCode');
-      const errorMessage = xmlProperty(response.body, 'errorMessage');
-      const token = xmlProperty(response.body, 'token');
-      // cy.wrap('token').as('token');
-      // cy.setToken(token);
-      Cypress.env('token', token);
-      cy.log(errorCode);
-      expect(errorCode).to.eq('0');
-      // cy.log(errorMessage);
-      cy.log("Token : " + token);
+    const errorMessage = xmlProperty(response.body, 'errorMessage');
+    const token = xmlProperty(response.body, 'token');
+    Cypress.env('token', token);
+    cy.log('errorCode: ' + errorCode + ' ' + errorMessage);
+    expect(errorCode).to.eq('0');
+    cy.log("Token : " + token);
+
   })
 }
 
-function download(username, privateKey, keyBirthdayTime, token, productId,quantity){
+function download(username, privateKey, keyBirthdayTime, token, productId, quantity) {
   const rqID = getrequestId("HangPTDV_Download_");
   Cypress.env('request_download', rqID);
   const data = username + '|' + rqID + '|' + token + '|' + '1000';
@@ -152,15 +152,7 @@ function download(username, privateKey, keyBirthdayTime, token, productId,quanti
   const signature = signDataWithRSA(data, privateKey);
   cy.log('Data DOWNLOAD:' + data);
   cy.log('Signature DOWNLOAD:' + signature);
-  cy.request({
-    method: 'POST',
-    url: url_base,
-    headers: {
-      'Content-Type': 'text/xml',
-
-      SOAPAction: '',
-    },
-    body: `
+  const requestXml = `
     <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
 <Body>
 <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
@@ -184,50 +176,9 @@ function download(username, privateKey, keyBirthdayTime, token, productId,quanti
 </requestHandle>
 </Body>
 </Envelope>
-    `,
-  }).then((response) => {
-    // Kiểm tra phản hồi
-    expect(response.status).to.eq(200);
-    cy.log("Response DOWNLOAD: " + response.body);
-    const data_response = xmlProperty(response.body, 'requestHandleReturn');
-    
-    // cy.log(data_response);
-    
-    const jsonData = JSON.parse(data_response);
-    const softpinPinCode = jsonData.products[0].softpins[0].softpinPinCode;
-    const signature_res = jsonData.signature;
-    const errorCode_res = jsonData.errorCode;
-    const sysTransID_res = jsonData.sysTransId;
+    `;
+  cy.log(`Request Đầu vào: ${requestXml}`);
 
-    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
-
-
-    cy.log("Chữ ký IME trả về: "+ signature_res);
-    cy.log("Dữ liệu verify: "+ data_verify);
-    // thực hiện verify dữ liệu trả về
-    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
-
-
-    //thực hiện giải mã chuỗi mã thẻ
-    cy.log('Softpin Pin Code:'+  softpinPinCode);  
-    
-    const decryptedString = decrypt(softpinPinCode, softPinKey);
-    cy.log("Decrypted Softpin Pin Code:" +  decryptedString);
-
-    cy.log('Giao dịch ' + rqID + ' DOWNLOAD Thành công ');
-    // expect(errorMessage).to.eq('success')
-
-  });
-}
-function topup(username,privateKey,token,phone, providerCode, amount){
-  const rqID = getrequestId("HangPTDV_TOPUP_");
-  const data = username + '|' + rqID + '|' + token + '|' + '1200';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data TOPUP :' + data);
-    cy.log('Signature TOPUP:' + signature);
-  Cypress.env('request_topup', rqID);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -236,7 +187,48 @@ function topup(username,privateKey,token,phone, providerCode, amount){
 
       SOAPAction: '',
     },
-    body: `
+    body: requestXml,
+  }).then((response) => {
+    // Kiểm tra phản hồi
+    expect(response.status).to.eq(200);
+    cy.log("Response DOWNLOAD: " + response.body);
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+
+    // cy.log(data_response);
+
+    // const jsonData = JSON.parse(data_response);
+    // const softpinPinCode = jsonData.products[0].softpins[0].softpinPinCode;
+    // const signature_res = jsonData.signature;
+    // const errorCode_res = jsonData.errorCode;
+    // const sysTransID_res = jsonData.sysTransId;
+
+    // const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+
+
+    // cy.log("Chữ ký IME trả về: "+ signature_res);
+    // cy.log("Dữ liệu verify: "+ data_verify);
+    // // thực hiện verify dữ liệu trả về
+    // verifySignDataWithPublicKey(data_verify, signature_res, public_key);
+
+
+    // //thực hiện giải mã chuỗi mã thẻ
+    // cy.log('Softpin Pin Code:'+  softpinPinCode);  
+
+    // const decryptedString = decrypt(softpinPinCode, softPinKey);
+    // cy.log("Decrypted Softpin Pin Code:" +  decryptedString);
+
+    cy.log('Giao dịch ' + rqID + ' DOWNLOAD Thành công ');
+    // expect(errorMessage).to.eq('success')
+
+  });
+}
+function topup(username, privateKey, token, phone, providerCode, amount) {
+  const rqID = getrequestId("HangPTDV_TOPUP_");
+  const data = username + '|' + rqID + '|' + token + '|' + '1200';
+  // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+  const signature = signDataWithRSA(data, privateKey);
+  const requestXml = `
     <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
 <Body>
 <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
@@ -256,43 +248,13 @@ function topup(username,privateKey,token,phone, providerCode, amount){
 </requestHandle>
 </Body>
 </Envelope>
-    `,
-  }).then((response) => {
-    // Kiểm tra phản hồi
-    expect(response.status).to.eq(200);
-    cy.log(" Response TOPUP: " + response.body);
-    const data_response = xmlProperty(response.body, 'requestHandleReturn');
-    
-    // cy.log(data_response);
-    
-    const jsonData = JSON.parse(data_response);
-    
-    const signature_res = jsonData.signature;
-    const errorCode_res = jsonData.errorCode;
-    const sysTransID_res = jsonData.sysTransId;
-    const reqID_res = jsonData.requestID;
-
-    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+    `
+  cy.log('Data TOPUP :' + data);
+  cy.log('Signature TOPUP:' + signature);
+  cy.log(`Request Đầu vào: ${requestXml}`);
 
 
-    cy.log("Chữ ký IME trả về: "+ signature_res);
-    cy.log("Dữ liệu verify: "+ data_verify);
-    // thực hiện verify dữ liệu trả về
-    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
-    cy.log('Giao dịch:'+ reqID_res + " TOPUP thành công")
-
-
-  });
-}
-
-function checktopup(username, privateKey,token){
-  const rqID = Cypress.env("request_topup");
-  const data = username + '|' + rqID + '|' + token + '|' + '1300';
-    // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-    const signature = signDataWithRSA(data, privateKey);
-    cy.log('Data checktopup:' + data);
-    cy.log('Signature checktopup:' + signature);
+  Cypress.env('request_topup', rqID);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -301,7 +263,42 @@ function checktopup(username, privateKey,token){
 
       SOAPAction: '',
     },
-    body: `
+    body: requestXml,
+  }).then((response) => {
+    // Kiểm tra phản hồi
+    expect(response.status).to.eq(200);
+    cy.log(" Response TOPUP: " + response.body);
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+
+    // cy.log(data_response);
+
+    const jsonData = JSON.parse(data_response);
+
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
+    const reqID_res = jsonData.requestID;
+
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|" + token;
+
+
+    cy.log("Chữ ký IME trả về: " + signature_res);
+    cy.log("Dữ liệu verify: " + data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
+    cy.log('Giao dịch:' + reqID_res + " TOPUP thành công")
+
+
+  });
+}
+
+function checktopup(username, privateKey, token) {
+  const rqID = Cypress.env("request_topup");
+  const data = username + '|' + rqID + '|' + token + '|' + '1300';
+  const signature = signDataWithRSA(data, privateKey);
+
+  // Đường dẫn đến tệp khóa bí mật RSA của bạn
+  const requestXml = `
     <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
     <Body>
         <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
@@ -311,45 +308,12 @@ function checktopup(username, privateKey,token){
           </requestData>
         </requestHandle>
     </Body>
-</Envelope>
- 
-    
-    `,
-  }).then((response) => {
-    // Kiểm tra phản hồi
-    expect(response.status).to.eq(200);
-    cy.log("Response CHECKTOPUP: " + response.body);
-    
-    const data_response = xmlProperty(response.body, 'requestHandleReturn');
-    
-    cy.log(data_response);
-    
-    const jsonData = JSON.parse(data_response);
-    
-    const signature_res = jsonData.signature;
-    const errorCode_res = jsonData.errorCode;
-    const sysTransID_res = jsonData.sysTransId;
+</Envelope> 
+    `
+  cy.log('Data checktopup:' + data);
+  cy.log('Signature checktopup:' + signature);
+  cy.log(`Request Đầu vào: ${requestXml}`);
 
-    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
-
-
-    cy.log("Chữ ký IME trả về: "+ signature_res);
-    cy.log("Dữ liệu verify: "+ data_verify);
-    // thực hiện verify dữ liệu trả về
-    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
-    
-
-  });
-}
-
-function redownload(username, privateKey,token){
-  const rqID = Cypress.env('request_download');
-  const data = username + '|' + rqID + '|' + token + '|' + '1100';
-  // Đường dẫn đến tệp khóa bí mật RSA của bạn
-
-  const signature = signDataWithRSA(data, privateKey);
-  cy.log('Data Redownload:' + data);
-  cy.log('Signature Redownload:' + signature);
   cy.request({
     method: 'POST',
     url: url_base,
@@ -358,7 +322,41 @@ function redownload(username, privateKey,token){
 
       SOAPAction: '',
     },
-    body: `
+    body: requestXml,
+  }).then((response) => {
+    // Kiểm tra phản hồi
+    expect(response.status).to.eq(200);
+    cy.log("Response CHECKTOPUP: " + response.body);
+
+    const data_response = xmlProperty(response.body, 'requestHandleReturn');
+
+    cy.log(data_response);
+
+    const jsonData = JSON.parse(data_response);
+
+    const signature_res = jsonData.signature;
+    const errorCode_res = jsonData.errorCode;
+    const sysTransID_res = jsonData.sysTransId;
+
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|" + token;
+
+
+    cy.log("Chữ ký IME trả về: " + signature_res);
+    cy.log("Dữ liệu verify: " + data_verify);
+    // thực hiện verify dữ liệu trả về
+    verifySignDataWithPublicKey(data_verify, signature_res, public_key);
+
+
+  });
+}
+
+function redownload(username, privateKey, token) {
+  const rqID = Cypress.env('request_download');
+  const data = username + '|' + rqID + '|' + token + '|' + '1100';
+  // Đường dẫn đến tệp khóa bí mật RSA của bạn
+
+  const signature = signDataWithRSA(data, privateKey);
+  const requestXml = `
     <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
   <Body>
       <requestHandle xmlns="http://interfaces.itopup.vnptepay.vn">
@@ -370,28 +368,39 @@ function redownload(username, privateKey,token){
 </requestHandle>
   </Body>
 </Envelope>
-    
-    `,
+    `;
+
+  cy.log(`Request Đầu vào: ${requestXml}`);
+
+  cy.request({
+    method: 'POST',
+    url: url_base,
+    headers: {
+      'Content-Type': 'text/xml',
+
+      SOAPAction: '',
+    },
+    body: requestXml,
   }).then((response) => {
     // Kiểm tra phản hồi
     expect(response.status).to.eq(200);
-    cy.log("Response Redownload: "+ response.body);
+    cy.log("Response Redownload: " + response.body);
 
     const data_response = xmlProperty(response.body, 'requestHandleReturn');
-    
+
     // cy.log(data_response);
-    
+
     const jsonData = JSON.parse(data_response);
-    
+
     const signature_res = jsonData.signature;
     const errorCode_res = jsonData.errorCode;
     const sysTransID_res = jsonData.sysTransId;
 
-    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|"+ token;
+    const data_verify = errorCode_res + "|" + rqID + "|" + sysTransID_res + "|" + token;
 
 
-    cy.log("Chữ ký IME trả về: "+ signature_res);
-    cy.log("Dữ liệu verify: "+ data_verify);
+    cy.log("Chữ ký IME trả về: " + signature_res);
+    cy.log("Dữ liệu verify: " + data_verify);
     // thực hiện verify dữ liệu trả về
     verifySignDataWithPublicKey(data_verify, signature_res, public_key);
 
@@ -407,62 +416,66 @@ function decrypt(payload, key) {
   const decipher = crypto.createDecipheriv('des-ede3-cbc', key, iv);
   let decrypted = decipher.update(data, null, 'utf8');
   decrypted += decipher.final('utf8');
-  
+
   return decrypted;
 }
 describe('SOAP API Testing - FULL Flow Transaction', () => {
   beforeEach(() => {
-    login(username,password, url_base);  
+    login(username, password, url_base);
   });
   it.skip('sign data RSA-SHA256', () => {
 
 
     // Sử dụng hàm ký trong mã chương trình của bạn
-    const data = username + '|' + password;
+    // const data = username + '|' + password;
+    const data = 'hello';
     // Đường dẫn đến tệp khóa bí mật RSA của bạn
 
     const signature = signDataWithRSA(data, privateKey);
     cy.log('Signature:' + signature);
+    // verifySignDataWithPublicKey(data,signature,public_key);
 
   })
-  it.skip('decrypt datacode ',() =>{
-    
-    
+  it.skip('decrypt datacode ', () => {
+
+
     // Usage
     const key = "70cf4fe7b75b72ddd78cbdb6";
     const encryptedString = "eRvfzed5rWXUPkj+nDG6FUSOJgg+CdcP";
-    
+
     const decryptedString = decrypt(encryptedString, key);
     cy.log("Decrypted String:", decryptedString);
   })
-  it('execute download softpin - 1000 ', () => {
-    
+  it.skip('execute download softpin - 1000 ', () => {
+
     const token = Cypress.env('token');
-    
-    download(username, privateKey, keyBirthdayTime, token, productId,quantity);
-    
+
+    // download(username, privateKey, keyBirthdayTime, token, productId,quantity);
+    download(username, privateKey, keyBirthdayTime, token, '322', 1);
+
   });
-  it('execute topup transaction - 1200', () => { 
+  it.skip('execute topup transaction - 1200', () => {
     const token = Cypress.env('token'); //lấy ra token
 
-    topup(username,privateKey,token,phone, providerCode, amount);
+    // topup(username,privateKey,token,phone, providerCode, amount);
+    topup(username, privateKey, token, '0932245698', 'DataVMS3', '20000');
 
   });
 
-  it('Check topup transaction - 1300', () => {
+  it.skip('Check topup transaction - 1300', () => {
     const token = Cypress.env('token');
-    topup(username,privateKey,token,phone, providerCode, amount);
-    checktopup(username, privateKey,token);
-   
+    topup(username, privateKey, token, phone, providerCode, amount);
+    checktopup(username, privateKey, token);
+
 
   });
 
   it('Redownload transaction - 1100', () => {
     const token = Cypress.env('token');
-   
-    download(username, privateKey, keyBirthdayTime, token, productId,quantity);
-    redownload(username, privateKey,token);
-    
+
+    download(username, privateKey, keyBirthdayTime, token, productId, quantity);
+    redownload(username, privateKey, token);
+
   });
 
 
