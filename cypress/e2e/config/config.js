@@ -4,6 +4,8 @@ const fs = require('fs');
 const forge = require('node-forge');
 class config {
     url_base = "https://haloship.imediatech.com.vn:8087/ItopupService2.0_IMD/services/TopupInterface";
+    url_base_v1 = "https://haloship.imediatech.com.vn:8087/ItopupService1.4/services/TopupInterface?wsdl";
+
     username = "IMEDIA_TEST";
     password = "24112536637251";
     keyBirthdayTime = '2022/11/29 09:26:01.690';
